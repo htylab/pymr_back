@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from numba import jit
 import numpy as np
 
 def read_molli_dir(dirname):
@@ -28,7 +27,7 @@ def read_molli_dir(dirname):
     im = im[temp]
     return im, Invtime
 
-@jit
+
 def synImg_cal(synTI, Amap,Bmap, T1starmap):
     '''
     synTI = np.arange(0,2500,10)
@@ -51,7 +50,8 @@ def synImg_cal(synTI, Amap,Bmap, T1starmap):
 
 
     return synImg
-@jit
+
+
 def synImg_cal2(synTI, Amap,Bmap, T1starmap):
     '''
     synTI = np.arange(0,2500,10)
