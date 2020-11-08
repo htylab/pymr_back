@@ -4,7 +4,7 @@ import numpy as np
 
 def read_molli_dir(dirname):
     import numpy as np
-    import dicom
+    import pydicom as dicom
     import os
     im=[]
     Invtime=[]
@@ -27,7 +27,7 @@ def read_molli_dir(dirname):
     im = im[temp]
     return im, Invtime
 
-
+#synImg_cal to be removed
 def synImg_cal(synTI, Amap,Bmap, T1starmap):
     '''
     synTI = np.arange(0,2500,10)
@@ -50,7 +50,6 @@ def synImg_cal(synTI, Amap,Bmap, T1starmap):
 
 
     return synImg
-
 
 def synImg_cal2(synTI, Amap,Bmap, T1starmap):
     '''
