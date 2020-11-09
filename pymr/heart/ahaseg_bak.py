@@ -4,12 +4,9 @@ example usage:
 %matplotlib inline
 import matplotlib.pyplot as plt
 from pymr.heart import ahaseg
-heart_mask = (LVbmask, LVwmask, RVbmask)
-label_mask = ahaseg.get_seg(heart_mask, nseg=4)
+label_mask = ahaseg.get_seg(LVbmask, LVwmask, RVbmask, nseg=4)
 plt.imshow(label_mask)
 '''
-import numpy as np
-from scipy import ndimage
 import numpy as np
 from scipy import ndimage
 
@@ -89,10 +86,9 @@ def get_sweep360(LVwmask, RVbmask):
                                      theta, LV_center)
         projection = ndimage.map_coordinates(RVbmask, [xall, yall], order=0).sum()
         sweep360.append(projection)
-    return np.array(sweep360)
+    return sweep360
 
-
-def get_angle(heart_mask, nseg=4):
+def labelit(angles, LVwmask):
     def sector_mask(xall, yall, LVwmask):
         smask = LVwmask * 0
         xall = np.round(xall.flatten())
@@ -104,31 +100,12 @@ def get_angle(heart_mask, nseg=4):
         yall = yall[np.nonzero(mask)].astype(int)
         smask[xall, yall] = 1
         return smask
-    
-    #step 1: sweep 360 and get AHA angles
-    
-    LVbmask, LVwmask, RVbmask = heart_mask
-    #import time
-    #t = time.time()
-    sweep360 = get_sweep360(LVwmask, RVbmask)
-    UP, DN = get_theta(sweep360)
-    anglelist = degree_calcu(UP, DN, nseg)
-    
-    #step 2: calculate mask360, 360 points with AHA labels
 
-    angles2 = np.append(anglelist, anglelist[0])
-    angles2 = np.rad2deg(np.unwrap(np.deg2rad(angles2)))
-    mask360 = np.zeros((360, ))
-    for ii in range(angles2.size-1):
-        temp = np.arange(angles2[ii], angles2[ii + 1]).astype(np.int)
-        temp[temp >= 360] = temp[temp >= 360] - 360
-        mask360[temp] = ii + 1
-        
-    #step 3: calculating AHA sector
     LV_center = ndimage.center_of_mass(LVwmask)
-    AHA_sector = LVwmask * 0
+    AHA_label = LVwmask * 0
+    angles2 = np.append(angles, angles[0])
     rr = np.min(np.abs(LVwmask.shape-np.array(LV_center))).astype(np.int)
-
+    angles2 = np.rad2deg(np.unwrap(np.deg2rad(angles2)))
 
     for ii in range(angles2.size-1):
         xall, yall = circular_sector(np.arange(0, rr, 0.5),
@@ -136,56 +113,21 @@ def get_angle(heart_mask, nseg=4):
                                      0.5), LV_center)
         smask = sector_mask(xall, yall, LVwmask)
         
-        AHA_sector[smask > 0] = (ii + 1)
-        
-    
-    return anglelist, mask360, AHA_sector
-#print(time.time() - t)
-#plt.figure()
-#plt.imshow(label_mask)
+        AHA_label[smask > 0] = (ii + 1)
+    AHA_label = LVwmask * AHA_label
+    return AHA_label
 
-def get_seg(heart_mask, nseg=4):
-    LVbmask, LVwmask, RVbmask = heart_mask
 
-    _, _, AHA_sector = get_angle(heart_mask, nseg)
-    #label_mask = labelit(anglelist, LVwmask)
-    label_mask = AHA_sector * LVwmask
+
+def get_seg(LVbmask, LVwmask, RVbmask, nseg=4):
+    #import time
+    #t = time.time()
+    sweep360 = get_sweep360(LVwmask, RVbmask)
+    UP, DN = get_theta(sweep360)
+    anglelist = degree_calcu(UP, DN, nseg)
+    label_mask = labelit(anglelist, LVwmask)
+    #print(time.time() - t)
+    #plt.figure()
+    #plt.imshow(label_mask)
 
     return label_mask
-
-def get_thick(heart_mask, nseg):
-    LVbmask, LVwmask, RVbmask = heart_mask
-    
-    _, mask360, _ = get_angle(heart_mask, nseg)
-    sweep360 = get_sweep360(LVwmask, LVwmask)
-    thick_list = []
-    for ii in range(nseg):
-        thick_list.append(np.mean(sweep360[mask360 == (ii + 1)]))
-    
-    return np.array(thick_list)
-
-def get_thickmap(LVwmask):
-
-    LV_center = ndimage.center_of_mass(LVwmask)
-    rr = np.min(np.abs(LVwmask.shape-np.array(LV_center))).astype(np.int)
-    thickmap = LVwmask * 0
-
-    sweep360 = []
-    for theta in range(360):
-        #print(theta)
-        xall, yall = circular_sector(np.arange(0, rr, 0.5),
-                                     theta, LV_center)
-        projection = ndimage.map_coordinates(LVwmask, [xall, yall], order=0).sum()
-        thickmap[xall.astype(np.int), yall.astype(np.int)] = projection
-        
-        sweep360.append(projection)
-    thickmap = LVwmask * thickmap
-    return thickmap
-
-def get_thickmap_mean(label_mask, thick):
-    thickmap_mean = label_mask.copy()
-    for ii in range(4):
-        thickmap_mean[thickmap_mean == (ii+1)] = thick[ii]
-        
-    return thickmap_mean
-    
