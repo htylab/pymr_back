@@ -10,8 +10,6 @@ plt.imshow(label_mask)
 '''
 import numpy as np
 from scipy import ndimage
-import numpy as np
-from scipy import ndimage
 
 def degree_calcu(UP, DN, seg_num):
     anglelist = np.zeros(seg_num)
