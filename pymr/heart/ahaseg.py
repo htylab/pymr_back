@@ -11,6 +11,16 @@ plt.imshow(label_mask)
 import numpy as np
 from scipy import ndimage
 
+def get_heartmask(heart_mask):
+    if isinstance(heart_mask, tuple):
+        #backward compatibility
+        LVbmask, LVwmask, RVbmask = heart_mask
+    else:
+        LVbmask = (heart_mask==1)
+        LVwmask = (heart_mask==2)
+        RVbmask = (heart_mask==3)
+    return LVbmask, LVwmask, RVbmask
+
 def degree_calcu(UP, DN, seg_num):
     anglelist = np.zeros(seg_num)
     if seg_num == 4:
@@ -105,7 +115,7 @@ def get_angle(heart_mask, nseg=4):
     
     #step 1: sweep 360 and get AHA angles
     
-    LVbmask, LVwmask, RVbmask = heart_mask
+    LVbmask, LVwmask, RVbmask = get_heartmask(heart_mask)
     #import time
     #t = time.time()
     sweep360 = get_sweep360(LVwmask, RVbmask)
@@ -143,7 +153,7 @@ def get_angle(heart_mask, nseg=4):
 #plt.imshow(label_mask)
 
 def get_seg(heart_mask, nseg=4):
-    LVbmask, LVwmask, RVbmask = heart_mask
+    LVbmask, LVwmask, RVbmask = get_heartmask(heart_mask)
 
     _, _, AHA_sector = get_angle(heart_mask, nseg)
     #label_mask = labelit(anglelist, LVwmask)
@@ -152,7 +162,7 @@ def get_seg(heart_mask, nseg=4):
     return label_mask
 
 def get_thick(heart_mask, nseg):
-    LVbmask, LVwmask, RVbmask = heart_mask
+    LVbmask, LVwmask, RVbmask = get_heartmask(heart_mask)
     
     _, mask360, _ = get_angle(heart_mask, nseg)
     sweep360 = get_sweep360(LVwmask, LVwmask)
@@ -182,7 +192,7 @@ def get_thickmap(LVwmask):
 
 def get_thickmap_mean(label_mask, thick):
     thickmap_mean = label_mask.copy()
-    for ii in range(4):
+    for ii in range(thick.size):
         thickmap_mean[thickmap_mean == (ii+1)] = thick[ii]
         
     return thickmap_mean
