@@ -11,7 +11,7 @@ setup(
   url = '', # use the URL to the github repo
   download_url = '',
   install_requires=[
-          'simpleitk',
+          'simpleitk','dipy'
       ],
   keywords = ['MRI'], # arbitrary keywords
   classifiers = [],

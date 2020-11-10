@@ -1,0 +1,111 @@
+import numpy as np
+from scipy import ndimage
+import matplotlib.pyplot as plt
+from pymr.heart import ahaseg
+
+
+def get_seg_xyt(heart_xyt, nseg=6):
+
+    #step 1: collect dia_frame and sys_frame
+    curve = np.sum(heart_xyt==1, axis=(0, 1))
+    #print(curve)
+    dia_frame = np.argmax(curve)
+    curve[curve==0] = 1e8
+    sys_frame = np.argmin(curve)
+    #print(dia_frame, sys_frame)
+
+
+    heart_sys = heart_xyt[..., sys_frame]
+    heart_dia = heart_xyt[..., dia_frame]
+
+    if np.sum(np.unique(heart_dia)) + np.sum(np.unique(heart_sys))< 12:
+        return heart_sys*0, heart_dia*0
+
+    if dia_frame==sys_frame:
+        return heart_sys*0, heart_dia*0    
+
+    heart_seg_sys = ahaseg.get_seg(heart_sys, nseg)
+    heart_seg_dia = ahaseg.get_seg(heart_dia, nseg)
+
+    return heart_seg_sys, heart_seg_dia
+
+def get_center(label_mask):
+    center_list = []
+    for ii in range(np.max(label_mask)):
+        center = ndimage.center_of_mass(label_mask==(ii+1))
+        center_list.append(center)
+        
+    return np.array(center_list)
+
+
+def get_motion_field(static, moving):
+    from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
+    from dipy.align.metrics import SSDMetric
+    import dipy.align.imwarp as imwarp
+
+    dim = static.ndim
+    metric = SSDMetric(dim)
+    level_iters = [100, 50, 25]
+    sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
+
+    mapping = sdr.optimize(static, moving)
+    warped = mapping.transform(moving)
+    backward_field = mapping.get_backward_field()
+    motion_magnitude = np.sqrt(backward_field[..., 0]**2 + backward_field[..., 1]**2)
+    return warped, motion_magnitude, backward_field
+
+
+
+def motion_ana_xyt(heart_xyt, nseg=6, display=False):
+
+    heart_seg_sys, heart_seg_dia = get_seg_xyt(heart_xyt, nseg)
+    if np.sum(heart_seg_sys) == 0:
+        motion_map = heart_seg_sys * 0
+        motion_vector = -1
+    else:
+        sys_center = get_center(heart_seg_sys)
+        dia_center = get_center(heart_seg_dia)
+        motion_vector = (sys_center - dia_center)
+        mask_dia_to_sys, motion_map, backward_field = get_motion_field(heart_seg_sys, heart_seg_dia)
+        #union_mask = heart_seg_sys | heart_seg_dia
+        #motion_map = motion_map * (union_mask > 0)
+
+    if display:
+        plt.figure(figsize=(10,5))
+        plt.subplot(121)
+        plt.imshow(heart_seg_dia)
+        plt.scatter(dia_center[:, 1], dia_center[:, 0], color='red')
+        plt.axis('off')
+        plt.subplot(122)
+        plt.imshow(heart_seg_sys)
+        plt.scatter(sys_center[:, 1], sys_center[:, 0], color='red')
+        plt.axis('off')
+
+        fig = plt.figure(figsize=(20, 10))
+
+        plt.subplot(121)
+        #fig.subplots_adjust(left=0,right=0,bottom=0,top=0)
+        #ax = plt.axes([0.0, 0.0, 1.0, 1.0])
+        plt.imshow(heart_seg_dia, cmap='gray')
+        index = np.arange(6)
+        plt.quiver(dia_center[index, 1], dia_center[index, 0] , 
+                motion_vector[index, 1], motion_vector[index, 0]*-1,
+                color='r', headlength=6)
+        plt.axis('off')
+
+        plt.subplot(122)
+        plt.imshow(motion_map)
+        plt.axis('off')
+        plt.show()
+
+    return motion_vector, motion_map
+
+
+def auto_crop(heart_xyzt):
+    heart_xyz = np.sum(heart_xyzt, axis=-1)
+    xx, yy, zz = np.nonzero(heart_xyz)
+    minx, maxx = max(0, np.min(xx) - 10), min(heart_xyz.shape[0], np.max(xx) + 10)
+    miny, maxy = max(0, np.min(yy) - 10), min(heart_xyz.shape[1], np.max(yy) + 10)
+    minz, maxz = np.min(zz), np.max(zz)
+    heart_crop = heart_xyzt[minx:maxx, miny:maxy, minz:maxz, :]
+    return heart_crop, (minx, maxx, miny, maxy, minz, maxz)
