@@ -59,10 +59,12 @@ def get_motion_field(static, moving):
 def motion_ana_xyt(heart_xyt, nseg=6, display=False):
 
     heart_seg_sys, heart_seg_dia = get_seg_xyt(heart_xyt, nseg)
-    if np.sum(heart_seg_sys) == 0:
+    if (np.sum(heart_seg_sys) == 0) or (np.sum(heart_seg_dia) == 0):
+        got_seg = False
         motion_map = heart_seg_sys * 0
         motion_vector = -1
     else:
+        got_seg = True
         sys_center = get_center(heart_seg_sys)
         dia_center = get_center(heart_seg_dia)
         motion_vector = (sys_center - dia_center)
@@ -70,7 +72,7 @@ def motion_ana_xyt(heart_xyt, nseg=6, display=False):
         #union_mask = heart_seg_sys | heart_seg_dia
         #motion_map = motion_map * (union_mask > 0)
 
-    if display:
+    if display and got_seg:
         plt.figure(figsize=(10,5))
         plt.subplot(121)
         plt.imshow(heart_seg_dia)
@@ -101,11 +103,14 @@ def motion_ana_xyt(heart_xyt, nseg=6, display=False):
     return motion_vector, motion_map
 
 
-def auto_crop(heart_xyzt):
-    heart_xyz = np.sum(heart_xyzt, axis=-1)
-    xx, yy, zz = np.nonzero(heart_xyz)
-    minx, maxx = max(0, np.min(xx) - 10), min(heart_xyz.shape[0], np.max(xx) + 10)
-    miny, maxy = max(0, np.min(yy) - 10), min(heart_xyz.shape[1], np.max(yy) + 10)
-    minz, maxz = np.min(zz), np.max(zz)
+def auto_crop(heart_xyzt, crop=None):
+    if crop is None:
+        heart_xyz = np.sum(heart_xyzt, axis=-1)
+        xx, yy, zz = np.nonzero(heart_xyz)
+        minx, maxx = max(0, np.min(xx) - 10), min(heart_xyz.shape[0], np.max(xx) + 10)
+        miny, maxy = max(0, np.min(yy) - 10), min(heart_xyz.shape[1], np.max(yy) + 10)
+        minz, maxz = np.min(zz), np.max(zz)
+    else:
+        minx, maxx, miny, maxy, minz, maxz = crop
     heart_crop = heart_xyzt[minx:maxx, miny:maxy, minz:maxz, :]
     return heart_crop, (minx, maxx, miny, maxy, minz, maxz)
