@@ -156,5 +156,23 @@ def auto_crop(heart_xyzt, crop=None):
         minx, maxx, miny, maxy, minz, maxz = crop
     heart_crop = heart_xyzt[minx:maxx, miny:maxy, minz:maxz, :]
     return heart_crop, (minx, maxx, miny, maxy, minz, maxz)
+
+def get_frame(heart_mask):
+    shape = len(heart_mask.shape)
+    if shape == 3: #xyt
+        curve = np.sum(heart_mask==1, axis=(0, 1))
+    elif shape == 4: #xyzt
+        curve = np.sum(heart_mask==1, axis=(0, 1, 2))
+    else:
+        sys_frame = -1
+        dia_frame = -1
+        return sys_frame, dia_frame
+
+    curve = curve.astype(np.float)
+    dia_frame = np.argmax(curve)
+    curve[curve==0] = 1e20
+    sys_frame = np.argmin(curve)
+
+    return sys_frame, dia_frame
     
 

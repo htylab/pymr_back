@@ -56,4 +56,5 @@ def thick_ana_xy(heart_mask_xy, nseg=6):
 
     return thick_result
 
+
     
