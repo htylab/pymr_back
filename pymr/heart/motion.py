@@ -1,8 +1,10 @@
-import numpy as np
-from scipy import ndimage
 import matplotlib.pyplot as plt
-from pymr.heart import ahaseg
-
+import numpy as np
+from .ahaseg import get_seg
+from scipy import ndimage
+import dipy.align.imwarp as imwarp
+from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
+from dipy.align.metrics import SSDMetric
 
 def get_seg_xyt(heart_xyt, nseg=6):
 
@@ -24,8 +26,8 @@ def get_seg_xyt(heart_xyt, nseg=6):
     if dia_frame==sys_frame:
         return heart_sys*0, heart_dia*0    
 
-    heart_seg_sys = ahaseg.get_seg(heart_sys, nseg)
-    heart_seg_dia = ahaseg.get_seg(heart_dia, nseg)
+    heart_seg_sys = get_seg(heart_sys, nseg)
+    heart_seg_dia = get_seg(heart_dia, nseg)
 
     return heart_seg_sys, heart_seg_dia
 
@@ -39,9 +41,6 @@ def get_center(label_mask):
 
 
 def get_motion_field(static, moving):
-    from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
-    from dipy.align.metrics import SSDMetric
-    import dipy.align.imwarp as imwarp
 
     dim = static.ndim
     metric = SSDMetric(dim)
@@ -101,16 +100,3 @@ def motion_ana_xyt(heart_xyt, nseg=6, display=False):
         plt.show()
 
     return motion_vector, motion_map
-
-
-def auto_crop(heart_xyzt, crop=None):
-    if crop is None:
-        heart_xyz = np.sum(heart_xyzt, axis=-1)
-        xx, yy, zz = np.nonzero(heart_xyz)
-        minx, maxx = max(0, np.min(xx) - 10), min(heart_xyz.shape[0], np.max(xx) + 10)
-        miny, maxy = max(0, np.min(yy) - 10), min(heart_xyz.shape[1], np.max(yy) + 10)
-        minz, maxz = np.min(zz), np.max(zz)
-    else:
-        minx, maxx, miny, maxy, minz, maxz = crop
-    heart_crop = heart_xyzt[minx:maxx, miny:maxy, minz:maxz, :]
-    return heart_crop, (minx, maxx, miny, maxy, minz, maxz)

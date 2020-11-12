@@ -145,28 +145,16 @@ def convert(f, result_dir=None):
     
     return heart_aha17_4d, sys_frame, dia_frame
 
-import matplotlib.pyplot as plt
-def montage(X, cmap='viridis'):
-    m, n, count = X.shape    
-    mm = int(np.ceil(np.sqrt(count)))
-    nn = mm
-    M = np.zeros((mm * m, nn * n))
-
-    image_id = 0
-    for j in range(mm):
-        for k in range(nn):
-            if image_id >= count: 
-                break
-            sliceM, sliceN = j * m, k * n
-            M[sliceM:sliceM + m, sliceN:sliceN + n] = X[:, :, image_id]
-            image_id += 1
-                    
-    #pylab.imshow(flipud(rot90(M)), cmap=colormap)
-    #pylab.axis('off')
-    plt.figure(figsize=(10, 10))
-    plt.imshow(M, cmap=cmap)
-    plt.axis('off')          
-    return M
-
+def auto_crop(heart_xyzt, crop=None):
+    if crop is None:
+        heart_xyz = np.sum(heart_xyzt, axis=-1)
+        xx, yy, zz = np.nonzero(heart_xyz)
+        minx, maxx = max(0, np.min(xx) - 10), min(heart_xyz.shape[0], np.max(xx) + 10)
+        miny, maxy = max(0, np.min(yy) - 10), min(heart_xyz.shape[1], np.max(yy) + 10)
+        minz, maxz = np.min(zz), np.max(zz)
+    else:
+        minx, maxx, miny, maxy, minz, maxz = crop
+    heart_crop = heart_xyzt[minx:maxx, miny:maxy, minz:maxz, :]
+    return heart_crop, (minx, maxx, miny, maxy, minz, maxz)
     
 
