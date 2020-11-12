@@ -1,55 +1,36 @@
 # -*- coding: utf-8 -*-
 
+import os
+
 import numpy as np
+import pydicom as dicom
+
 
 def read_molli_dir(dirname):
-    import numpy as np
-    import pydicom as dicom
-    import os
+
     im=[]
     Invtime=[]
     count=0
     for fname in next(os.walk(dirname))[2]:
-        fname_full=os.path.join(dirname,fname)
+        fname_full = os.path.join(dirname,fname)
         try:
-            temp=dicom.read_file(fname_full)
-            im=np.append(im,temp.pixel_array)
-            mat_m,mat_n= temp.pixel_array.shape
-            Invtime=np.append(Invtime,temp.InversionTime)
+            temp = dicom.read_file(fname_full)
+            im = np.append(im,temp.pixel_array)
+            mat_m, mat_n = temp.pixel_array.shape
+            Invtime = np.append(Invtime, temp.InversionTime)
             count += 1
         except:
             print("invalid dicom file, ignore this %s." % fname_full)
             pass
+
     print("Total dicom file:%d" % count)
-    im = np.reshape(im,(count,mat_m,mat_n))
-    temp=np.argsort(Invtime)
-    Invtime=Invtime[temp]
+    im = np.reshape(im, (count, mat_m, mat_n))
+    temp = np.argsort(Invtime)
+    Invtime = Invtime[temp]
     im = im[temp]
     return im, Invtime
 
-#synImg_cal to be removed
-def synImg_cal(synTI, Amap,Bmap, T1starmap):
-    '''
-    synTI = np.arange(0,2500,10)
-    synImg = synImg_cal(synTI, Amap_pre, Bmap_pre, T1starmap_pre)
-    '''
-    j,k = Amap.shape
-    if isinstance(synTI, np.ndarray):
-        synImg = np.empty((synTI.size,j,k), dtype=np.double)
-        for ii in range(synTI.size):
-            for jj in range(j):
-                for kk in range(k):
-                    if T1starmap[jj,kk] != 0:
-                        synImg[ii,jj,kk] = abs(Amap[jj,kk]-Bmap[jj,kk]*np.exp(-synTI[ii]/T1starmap[jj,kk]))
-    else:
-        synImg = Amap * 0.0
-        for jj in range(j):
-            for kk in range(k):
-                if T1starmap[jj,kk] != 0:
-                    synImg[jj,kk] = abs(Amap[jj,kk]-Bmap[jj,kk]*np.exp(-synTI/T1starmap[jj,kk]))
 
-
-    return synImg
 
 def synImg_cal2(synTI, Amap,Bmap, T1starmap):
     '''
@@ -81,9 +62,10 @@ def T1LLmap(im, Invtime, threshold = 40):
     mat_n = im.shape[2]
     mat_size = mat_m * mat_n
 
+    import ctypes
     import os
     import platform
-    import ctypes
+
     import numpy as np
 
     if platform.system() == 'Windows':
@@ -97,6 +79,7 @@ def T1LLmap(im, Invtime, threshold = 40):
     syn = lib.syn
 
     from numpy.ctypeslib import ndpointer
+
     # Define the types of the output and arguments of this function.
     syn.restype = None
     syn.argtypes = [ndpointer(ctypes.c_double),ctypes.c_int,
@@ -189,8 +172,8 @@ def reg_spline_MI(fixed_np, moving_np, fixed_mask_np=None, meshsize=10):
     return moving_reg_np, resampler
 
 def reg_move_it(resampler, img_np):
-    import SimpleITK as sitk
     import numpy as np
+    import SimpleITK as sitk
     if len(img_np.shape) == 2:
         img  = sitk.Cast(sitk.GetImageFromArray(img_np), sitk.sitkFloat32)
         img_reg = resampler.Execute(img)

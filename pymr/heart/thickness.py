@@ -3,6 +3,7 @@ import numpy as np
 from .ahaseg import get_heartmask, get_seg, circular_sector, get_angle, get_sweep360
 import numpy as np
 from scipy import ndimage
+from .cine import get_frame
 
 def get_thick(heart_mask, nseg):
     LVbmask, LVwmask, RVbmask = get_heartmask(heart_mask)
@@ -45,16 +46,51 @@ def thick_ana_xy(heart_mask_xy, nseg=6):
 
     LVbmask, LVwmask, RVbmask = get_heartmask(heart_mask_xy)
 
-    label_mask = get_seg(heart_mask_xy, nseg)
-    thick = get_thick(heart_mask_xy, nseg)
-    thickmap = get_thickmap(LVwmask)
-    thickmap_mean = get_thickmap_mean(label_mask, thick)
+    if np.sum(LVbmask) >0 and np.sum(LVwmask) >0 and np.sum(RVbmask) >0:
 
-    thick_result['thickness'] = thick
-    thick_result['thickmap'] = thickmap
-    thick_result['thickmap_mean'] = thickmap_mean
+        label_mask = get_seg(heart_mask_xy, nseg)
+        thick = get_thick(heart_mask_xy, nseg)
+        thickmap = get_thickmap(LVwmask)
+        thickmap_mean = get_thickmap_mean(label_mask, thick)
+
+        thick_result['thickness'] = thick
+        thick_result['thickmap'] = thickmap
+        thick_result['thickmap_mean'] = thickmap_mean
+        thick_result['ok'] = True
+    
+    else:
+        thick_result['thickness'] = -1
+        thick_result['thickmap'] = -1
+        thick_result['thickmap_mean'] = -1
+        thick_result['ok'] = False
 
     return thick_result
 
+def thick_ana_xyt(heart_mask_xyt, nseg=6):
+
+    thick_result = dict()
+
+    sys_frame, dia_frame = get_frame(heart_mask_xyt)
+
+    sys_thick = thick_ana_xy(heart_mask_xyt[..., sys_frame], nseg)
+    dia_thick = thick_ana_xy(heart_mask_xyt[..., dia_frame], nseg)
+
+    if sys_thick['ok'] and sys_thick['ok']:
+
+        thickening = (sys_thick['thickness'] - dia_thick['thickness'])
+        thickening = thickening / dia_thick['thickness']        
+
+    else:
+        thickening = -1
+
+    thick_result['sys'] =  sys_thick
+    thick_result['dia'] =  dia_thick
+    thick_result['thickening'] =  thickening
+
+    print(thickening)
+
+
+
+    return thick_result
 
     
