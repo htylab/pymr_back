@@ -196,4 +196,22 @@ def get_thickmap_mean(label_mask, thick):
         thickmap_mean[thickmap_mean == (ii+1)] = thick[ii]
         
     return thickmap_mean
+
+def thick_ana_xy(heart_mask_xy, nseg=6):
+
+    thick_result = dict()
+
+    LVbmask, LVwmask, RVbmask = get_heartmask(heart_mask_xy)
+
+    label_mask = get_seg(heart_mask_xy, nseg)
+    thick = get_thick(heart_mask_xy, nseg)
+    thickmap = get_thickmap(LVwmask)
+    thickmap_mean = get_thickmap_mean(label_mask, thick)
+
+    thick_result['thickness'] = thick
+    thick_result['thickmap'] = thickmap
+    thick_result['thickmap_mean'] = thickmap_mean
+
+    return thick_result
+
     
