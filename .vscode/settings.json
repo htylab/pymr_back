@@ -1,4 +1,3 @@
 {
-    "jupyter.jupyterServerType": "local",
-    "python.dataScience.jupyterServerURI": "local"
+    "jupyter.jupyterServerType": "local"
 }

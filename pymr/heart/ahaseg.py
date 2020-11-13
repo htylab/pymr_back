@@ -48,7 +48,49 @@ def circular_sector(r_range, theta_range, LV_center):
     yall = np.real(z) + cy
     return xall, yall
 
+
+
 def get_theta(sweep360):
+    from scipy.optimize import curve_fit
+    from scipy.signal import medfilt
+    
+    y = sweep360.copy()
+    
+    def gauss(x, *p):
+        A, mu, sigma = p
+        return A*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+    def fit(x, y):
+        #print(y)
+        p0 = [np.max(y), np.argmax(y)+x[0], 1.]
+        try:
+            coeff, var_matrix = curve_fit(gauss, x, y, p0=p0)
+            A, mu, sigma = coeff
+        except:
+            mu = 0
+            sigma = 0
+        return mu, sigma
+    y = medfilt(y)
+    y2 = np.hstack([y, y, y])
+    #y2 = medfilt(y2)
+    maxv = y2.argsort()[::-1][:10]
+    maxv = maxv[np.argmin(np.abs(maxv-360*3//2))]
+    #print('maxv:%d' % maxv, y2.argsort()[::-1][:10])
+    y2[:(maxv-90)] = 0
+    y2[(maxv+90):] = 0
+    #print(y2[(maxv-90):maxv])
+    x = np.arange(y2.size)
+    mu, sigma = fit(x[(maxv-90):maxv], y2[(maxv-90):maxv])
+    uprank1 = mu - sigma*2.5
+    mu, sigma = fit(x[maxv:(maxv+90)], y2[maxv:(maxv+90)])
+    downrank1 = mu + sigma*2.5
+    uprank2 = np.nonzero(y2 > 5)[0][0]
+    downrank2 = np.nonzero(y2 > 5)[0][-1]
+    uprank = int(max(uprank1, uprank2)) % 360
+    downrank = int(min(downrank1, downrank2)) % 360
+    return uprank, downrank
+
+def get_thetaX(sweep360):
     from scipy.optimize import curve_fit
     from scipy.signal import medfilt
     sumar = np.array(sweep360)
