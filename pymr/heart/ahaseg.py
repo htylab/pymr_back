@@ -10,7 +10,7 @@ plt.imshow(label_mask)
 '''
 import numpy as np
 from scipy import ndimage
-
+import matplotlib.pyplot as plt
 def get_heartmask(heart_mask):
     if isinstance(heart_mask, tuple):
         #backward compatibility
@@ -24,18 +24,18 @@ def get_heartmask(heart_mask):
 def degree_calcu(UP, DN, seg_num):
     anglelist = np.zeros(seg_num)
     if seg_num == 4:
-        anglelist[0] = DN-180.
+        anglelist[0] = DN - 180.
         anglelist[1] = UP
         anglelist[2] = DN
-        anglelist[3] = UP+180.
+        anglelist[3] = UP + 180.
 
     if seg_num == 6:
-        anglelist[0] = DN-180.
+        anglelist[0] = DN - 180.
         anglelist[1] = UP
-        anglelist[2] = (UP+DN)/2.
+        anglelist[2] = (UP + DN)/2.
         anglelist[3] = DN
-        anglelist[4] = UP+180.
-        anglelist[5] = anglelist[2]+180.
+        anglelist[4] = UP + 180.
+        anglelist[5] = anglelist[2] + 180.
     anglelist = (anglelist + 360) % 360
 
     return anglelist.astype(int)
@@ -80,14 +80,20 @@ def get_theta(sweep360):
     y2[(maxv+90):] = 0
     #print(y2[(maxv-90):maxv])
     x = np.arange(y2.size)
-    mu, sigma = fit(x[(maxv-90):maxv], y2[(maxv-90):maxv])
+    mu, sigma = fit(x[(maxv-150):maxv], y2[(maxv-150):maxv])
     uprank1 = mu - sigma*2.5
-    mu, sigma = fit(x[maxv:(maxv+90)], y2[maxv:(maxv+90)])
+    mu, sigma = fit(x[maxv:(maxv+150)], y2[maxv:(maxv+150)])
     downrank1 = mu + sigma*2.5
     uprank2 = np.nonzero(y2 > 5)[0][0]
     downrank2 = np.nonzero(y2 > 5)[0][-1]
-    uprank = int(max(uprank1, uprank2)) % 360
-    downrank = int(min(downrank1, downrank2)) % 360
+    uprank = int(max(uprank1, uprank2)) % 360 + 360
+    downrank = int(min(downrank1, downrank2)) % 360 + 360
+    #print(uprank, downrank)
+    phase = np.deg2rad(np.array([uprank, downrank]))
+    uprank, downrank = np.rad2deg(np.unwrap(phase)).astype(np.int) - 360
+        
+    #print(uprank, downrank)
+    #print('=' * 20)
     return uprank, downrank
 
 def get_thetaX(sweep360):
@@ -124,6 +130,8 @@ def get_thetaX(sweep360):
     downrank2 = np.nonzero(y > 5)[0][-1]
     uprank = max(uprank1, uprank2)
     downrank = min(downrank1, downrank2)
+    
+    print(int(uprank), int(downrank))
 
     return int(uprank), int(downrank)
 
@@ -164,11 +172,14 @@ def get_angle(heart_mask, nseg=4):
     UP, DN = get_theta(sweep360)
     anglelist = degree_calcu(UP, DN, nseg)
     
+    
     #step 2: calculate mask360, 360 points with AHA labels
 
     angles2 = np.append(anglelist, anglelist[0])
     angles2 = np.rad2deg(np.unwrap(np.deg2rad(angles2)))
+
     mask360 = np.zeros((360, ))
+    #print(angles2)
     for ii in range(angles2.size-1):
         temp = np.arange(angles2[ii], angles2[ii + 1]).astype(np.int)
         temp[temp >= 360] = temp[temp >= 360] - 360
@@ -183,12 +194,22 @@ def get_angle(heart_mask, nseg=4):
     for ii in range(angles2.size-1):
         xall, yall = circular_sector(np.arange(0, rr, 0.5),
                                      np.arange(angles2[ii], angles2[ii+1],
-                                     0.5), LV_center)
+                                     0.1), LV_center)
+        
         smask = sector_mask(xall, yall, LVwmask)
         
-        AHA_sector[smask > 0] = (ii + 1)
+        #print(angles2[ii], angles2[ii+1])
+        #print(xall, yall)
+        #plt.figure()
+        #plt.imshow(smask)
+        #plt.title('%f_%f' % (angles2[ii], angles2[ii+1]))
         
+        AHA_sector[smask > 0] = (ii + 1)
     
+    
+    #plt.figure()
+    #plt.imshow(AHA_sector)
+    #plt.title(angles2)
     return anglelist, mask360, AHA_sector
 #print(time.time() - t)
 #plt.figure()

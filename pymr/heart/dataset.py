@@ -8,46 +8,43 @@ from os.path import join, basename
 def get_loc(num, got_apex):
     loc = dict()
     if got_apex> 0:
-        #got_apex = True    
-        loc[3] = [1]*1 + [2]*1 + [3]*1
-        loc[4] = [1]*1 + [2]*2 + [3]*1
-        loc[5] = [1]*2 + [2]*2 + [3]*1
-        loc[6] = [1]*2 + [2]*2 + [3]*2
-        loc[7] = [1]*2 + [2]*3 + [3]*2
-        loc[8] = [1]*3 + [2]*3 + [3]*2
-        loc[9] = [1]*3 + [2]*3 + [3]*3
-        loc[10] = [1]*3 + [2]*4 + [3]*3
-        loc[11] = [1]*4 + [2]*4 + [3]*3
-        loc[12] = [1]*4 + [2]*4 + [3]*4
-        loc[13] = [1]*4 + [2]*5 + [3]*4
-        loc[14] = [1]*5 + [2]*5 + [3]*4
-        loc[15] = [1]*5 + [2]*5 + [3]*5
-        loc[16] = [1]*5 + [2]*6 + [3]*5
-        loc[17] = [1]*6 + [2]*6 + [3]*5
-        loc[18] = [1]*6 + [2]*6 + [3]*6
-        loc[19] = [1]*6 + [2]*7 + [3]*6
-        loc[20] = [1]*7 + [2]*7 + [3]*6
+        #got_apex = True
+        mid = num//3
+        basal = mid
+        apical = mid
+        if num % 3 == 1:
+            mid = mid + 1
+        elif num % 3 == 2:
+            basal += 1
+            mid += 1
+        
+        loc = [1]*basal + [2]*mid + [3]*apical
+        #loc[3] = [1]*1 + [2]*1 + [3]*1
+        #loc[4] = [1]*1 + [2]*2 + [3]*1
+        #loc[5] = [1]*2 + [2]*2 + [3]*1
+        #loc[6] = [1]*2 + [2]*2 + [3]*2
+        #loc[7] = [1]*2 + [2]*3 + [3]*2
+
+
     else:
-        loc[3] = [1]*1 + [2]*1 + [3]*1
-        loc[4] = [1]*1 + [2]*1 + [3]*1 + [4]*1
-        loc[5] = [1]*1 + [2]*2 + [3]*1 + [4]*1
-        loc[6] = [1]*2 + [2]*2 + [3]*1 + [4]*1
-        loc[7] = [1]*2 + [2]*2 + [3]*2 + [4]*1
-        loc[8] = [1]*2 + [2]*3 + [3]*2 + [4]*1
-        loc[9] = [1]*3 + [2]*3 + [3]*2 + [4]*1
-        loc[10] = [1]*3 + [2]*3 + [3]*3 + [4]*1
-        loc[11] = [1]*3 + [2]*3 + [3]*3 + [4]*2
-        loc[12] = [1]*3 + [2]*4 + [3]*3 + [4]*2
-        loc[13] = [1]*4 + [2]*4 + [3]*3 + [4]*2
-        loc[14] = [1]*4 + [2]*4 + [3]*4 + [4]*2
-        loc[15] = [1]*4 + [2]*4 + [3]*4 + [4]*3
-        loc[16] = [1]*4 + [2]*5 + [3]*4 + [4]*3
-        loc[17] = [1]*5 + [2]*5 + [3]*4 + [4]*3
-        loc[18] = [1]*5 + [2]*5 + [3]*5 + [4]*3
-        loc[19] = [1]*5 + [2]*6 + [3]*5 + [4]*3
-        loc[20] = [1]*6 + [2]*6 + [3]*5 + [4]*3
+        
+        apex = num // 7
+
+        num = num - apex
+
+        mid = num//3
+        basal = mid
+        apical = mid
+        if num % 3 == 1:
+            mid = mid + 1
+        elif num % 3 == 2:
+            basal += 1
+            mid += 1
+            
+        loc = [1]*basal + [2]*mid + [3]*apical + [4]*apex
+
     
-    return loc[num]
+    return loc
 
 def get_slice_label(heart_xyzt):
     #basal: 1, 5
@@ -95,7 +92,7 @@ def get_slice_label(heart_xyzt):
         slice_label[curve_and > 0] = get_loc(np.sum(curve_and), got_apex)[::-1]
         slice_label[curve_apex > 0] = 4
         slice_label[curve_basal > 0] = 11
-    print(slice_label)
+    #print(slice_label)
     return slice_label
 
 def proc_basal_without_RV(mask1, mask5):
@@ -113,7 +110,7 @@ def proc_basal_without_RV(mask1, mask5):
     return seg5
 
 
-def convert(f, result_dir=None):
+def convert(f, dataset='MMS', result_dir=None):
     if isinstance(f, str):
         temp = nibabel.load(f)
         heart = temp.get_fdata()
@@ -122,6 +119,19 @@ def convert(f, result_dir=None):
     else:
         heart = f.copy()
         file_input = False
+    
+    new_f = basename(f)
+    if dataset=='MMS':
+        new_f = basename(f).replace('_gt', '_lab19')
+        
+    elif dataset=='ACDC':
+        heart_temp = heart.copy()
+        heart_temp[heart==1] = 3
+        heart_temp[heart==3] = 1
+        heart = heart_temp.copy()
+        del heart_temp
+
+        
 
     slice_label = get_slice_label(heart)
     #print(slice_label)
@@ -160,12 +170,26 @@ def convert(f, result_dir=None):
         else:
             nseg = 6
 
-
         dia_seg = ahaseg.get_seg(heart_xy_dia, nseg)
         sys_seg = ahaseg.get_seg(heart_xy_sys, nseg)
-
         dia_seg[dia_seg > 0] = dia_seg[dia_seg > 0] + offset[slice_label[ii]]
         sys_seg[sys_seg > 0] = sys_seg[sys_seg > 0] + offset[slice_label[ii]]
+        
+        if slice_label[ii] == 3:
+            if (np.sum(dia_seg) == 0) or (np.sum(sys_seg) == 0):
+                dia_seg = heart_xy_dia.copy()
+                dia_seg[dia_seg==2] = 17
+                dia_seg[dia_seg==1] = 0
+                dia_seg[dia_seg==3] = 0
+                
+                sys_seg = heart_xy_sys.copy()
+                sys_seg[sys_seg==2] = 17
+                sys_seg[sys_seg==1] = 0
+                sys_seg[sys_seg==3] = 0
+                
+   
+                
+        
 
         heart_aha17_4d[:, :, ii, dia_frame] = dia_seg
         heart_aha17_4d[:, :, ii, sys_frame] = sys_seg
@@ -205,9 +229,11 @@ def convert(f, result_dir=None):
             #print(slice_label_temp)  
 
 
+    heart_aha17_4d[heart==1] = 18
+    heart_aha17_4d[heart==3] = 19
 
     if (result_dir is not None) and file_input:        
-        result_f = join(result_dir, basename(f))        
+        result_f = join(result_dir, new_f)        
         nii_label = nibabel.Nifti1Image(heart_aha17_4d.astype(np.uint8), affine)
         nibabel.save(nii_label, result_f)
 
