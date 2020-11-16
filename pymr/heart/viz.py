@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def montage(X, cmap='viridis'):
+def montage(X, cmap='viridis', fname=None, display=True):
     m, n, count = X.shape    
     mm = int(np.ceil(np.sqrt(count)))
     nn = mm
@@ -19,9 +19,13 @@ def montage(X, cmap='viridis'):
                     
     #pylab.imshow(flipud(rot90(M)), cmap=colormap)
     #pylab.axis('off')
+    if display == False:
+        plt.ioff()
     plt.figure(figsize=(10, 10))
     plt.imshow(M, cmap=cmap)
-    plt.axis('off')          
+    plt.axis('off')
+    if fname is not None:
+        plt.savefig(fname)
     return M
 
 

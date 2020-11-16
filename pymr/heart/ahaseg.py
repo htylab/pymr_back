@@ -84,8 +84,8 @@ def get_theta(sweep360):
     uprank1 = mu - sigma*2.5
     mu, sigma = fit(x[maxv:(maxv+150)], y2[maxv:(maxv+150)])
     downrank1 = mu + sigma*2.5
-    uprank2 = np.nonzero(y2 > 5)[0][0]
-    downrank2 = np.nonzero(y2 > 5)[0][-1]
+    uprank2 = np.nonzero(y2 >= min(np.max(y2), 5))[0][0]
+    downrank2 = np.nonzero(y2 >= min(np.max(y2), 5))[0][-1]
     uprank = int(max(uprank1, uprank2)) % 360 + 360
     downrank = int(min(downrank1, downrank2)) % 360 + 360
     #print(uprank, downrank)
